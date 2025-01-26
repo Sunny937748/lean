@@ -5,6 +5,7 @@ inductive BinaryTree (α : Type) [Ord α] where
   | empty : BinaryTree α
   | leaf : α → BinaryTree α
   | node : α → BinaryTree α → BinaryTree α → BinaryTree α
+  
 
 def is_empty {α : Type} [Ord α] : BinaryTree α → Bool
   | BinaryTree.empty => true
@@ -181,6 +182,14 @@ def is_max_heap : BinaryTree Nat → Bool :=
 def get_top {h : BinaryTree Nat} : Nat :=
   get_value h
 
+--合并
+def merge_heaps (heap1 heap2 : BinaryTree Nat) : BinaryTree Nat :=
+  let elements1 := flatten_to_list heap1
+  let elements2 := flatten_to_list heap2
+  let mergedList := elements1 ++ elements2
+  array_to_min_heap mergedList.toArray
+
+--删除
 def get_end_value : BinaryTree Nat → Nat
   | BinaryTree.empty => panic! "Cannot get value from an empty node"
   | BinaryTree.leaf v => v
@@ -350,3 +359,11 @@ def testTree : BinaryTree Nat :=
 #eval delete_top (leaf 5)       -- 单节点树删除
 #eval delete_top empty          -- 空树删除
 #eval delete_top exampleTree    -- 复杂树删除堆顶
+
+-- 合并堆测试
+def heap1 : BinaryTree Nat := array_to_min_heap #[10, 20, 30, 40, 50]
+def heap2 : BinaryTree Nat := array_to_min_heap #[5, 15, 25]
+
+#eval merge_heaps heap1 heap2          -- 合并 heap1 和 heap2
+#eval merge_heaps heap1 exampleTree2  -- 与空树合并
+
