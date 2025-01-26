@@ -199,16 +199,15 @@ def remove_last_node : BinaryTree Nat → BinaryTree Nat
       let newLeft := remove_last_node l
       BinaryTree.node v newLeft r
 
-def delete_top {h : BinaryTree Nat} : BinaryTree Nat :=
-  sorry
-
-set_option linter.unusedVariables false
 def min_bubble_down : BinaryTree Nat → BinaryTree Nat
   | BinaryTree.empty => BinaryTree.empty
   | BinaryTree.leaf v => BinaryTree.leaf v
   | BinaryTree.node v l r =>
-   match l, r with
-    | BinaryTree.empty, _ => BinaryTree.node v l r
+    match l, r with
+    | BinaryTree.empty, BinaryTree.empty => BinaryTree.node v l r
+    | BinaryTree.empty, BinaryTree.leaf rv =>
+      if v > rv then BinaryTree.node rv l (BinaryTree.leaf v)
+      else BinaryTree.node v l r
     | BinaryTree.leaf lv, BinaryTree.empty =>
       if v > lv then BinaryTree.node lv (BinaryTree.leaf v) r
       else BinaryTree.node v l r
@@ -216,16 +215,70 @@ def min_bubble_down : BinaryTree Nat → BinaryTree Nat
       if v > lv then BinaryTree.node lv (BinaryTree.leaf v) r
       else if v > rv then BinaryTree.node rv l (BinaryTree.leaf v)
       else BinaryTree.node v l r
-    | BinaryTree.leaf lv, BinaryTree.node rv rl rr => BinaryTree.node v l r
-    | BinaryTree.node lv ll lr, BinaryTree.empty => BinaryTree.node v l r
-    | BinaryTree.node lv ll lr, BinaryTree.leaf rv =>
+    | BinaryTree.node lv ll lr, BinaryTree.empty =>
       if v > lv then BinaryTree.node lv (min_bubble_down (BinaryTree.node v ll lr)) r
-      else if v > rv then BinaryTree.node rv l (BinaryTree.leaf v)
       else BinaryTree.node v l r
+    | BinaryTree.empty, BinaryTree.node rv rl rr =>
+      if v > rv then BinaryTree.node rv l (min_bubble_down (BinaryTree.node v rl rr))
+      else BinaryTree.node v l r
+    | BinaryTree.node lv ll lr, BinaryTree.leaf rv =>
+      if lv < rv then
+        if v > lv then BinaryTree.node lv (min_bubble_down (BinaryTree.node v ll lr)) r
+        else BinaryTree.node v l r
+      else
+        if v > rv then BinaryTree.node rv l (BinaryTree.leaf v)
+        else BinaryTree.node v l r
+    | BinaryTree.leaf lv, BinaryTree.node rv rl rr =>
+      if lv < rv then
+        if v > lv then BinaryTree.node lv (BinaryTree.leaf v) r
+        else BinaryTree.node v l r
+      else
+        if v > rv then BinaryTree.node rv l (min_bubble_down (BinaryTree.node v rl rr))
+        else BinaryTree.node v l r
     | BinaryTree.node lv ll lr, BinaryTree.node rv rl rr =>
-      if v > lv && lv < rv then BinaryTree.node lv (min_bubble_down (BinaryTree.node v ll lr)) r
-      else if v > lv && lv > rv then BinaryTree.node rv l (min_bubble_down (BinaryTree.node v rl rr))
-      else BinaryTree.node v l r
+      if lv < rv then
+        if v > lv then BinaryTree.node lv (min_bubble_down (BinaryTree.node v ll lr)) r
+        else BinaryTree.node v l r
+      else
+        if v > rv then BinaryTree.node rv l (min_bubble_down (BinaryTree.node v rl rr))
+        else BinaryTree.node v l r
+
+
+def delete_top : BinaryTree Nat → BinaryTree Nat
+  | BinaryTree.empty => BinaryTree.empty  -- 空树
+  | BinaryTree.leaf _ => BinaryTree.empty  -- 单节点树
+  | BinaryTree.node v l r =>               -- 处理一般情况
+    match l, r with
+    | BinaryTree.empty, BinaryTree.empty => BinaryTree.empty  -- 只有根节点的情况
+    | BinaryTree.empty, BinaryTree.leaf rv =>
+      BinaryTree.node rv BinaryTree.empty BinaryTree.empty  -- 左空，右为叶子节点
+    | BinaryTree.empty, BinaryTree.node rv rl rr =>
+      BinaryTree.node rv rl rr  -- 左空，右为子树
+    | BinaryTree.leaf lv, BinaryTree.empty =>
+      BinaryTree.node lv BinaryTree.empty BinaryTree.empty  -- 左为叶子节点，右空
+    | BinaryTree.node lv ll lr, BinaryTree.empty =>
+      BinaryTree.node lv ll lr  -- 左为子树，右空
+    | BinaryTree.leaf lv, BinaryTree.leaf rv =>
+      if lv < rv then BinaryTree.node lv BinaryTree.empty (BinaryTree.leaf rv)
+      else BinaryTree.node rv (BinaryTree.leaf lv) BinaryTree.empty  -- 左右都为叶子
+    | BinaryTree.leaf lv, BinaryTree.node rv rl rr =>
+      if lv < rv then BinaryTree.node lv BinaryTree.empty (BinaryTree.node rv rl rr)
+      else BinaryTree.node rv (BinaryTree.leaf lv) rl  -- 左为叶子，右为子树
+    | BinaryTree.node lv ll lr, BinaryTree.leaf rv =>
+      if lv < rv then BinaryTree.node lv ll (BinaryTree.leaf rv)
+      else BinaryTree.node rv (BinaryTree.node lv ll lr) BinaryTree.empty  -- 左为子树，右为叶子
+    | BinaryTree.node lv ll lr, BinaryTree.node rv rl rr =>
+      let lastValue := get_end_value (BinaryTree.node v l r)  -- 获取最后一个节点的值
+      let treeWithoutLast := remove_last_node (BinaryTree.node v l r)  -- 删除最后一个节点
+      match treeWithoutLast with
+      | BinaryTree.empty => BinaryTree.empty
+      | _ => min_bubble_down (BinaryTree.node lastValue ll rr)
+
+
+
+
+set_option linter.unusedVariables false
+
 
 def change_to_min_heap :BinaryTree Nat → BinaryTree Nat
   | BinaryTree.empty => BinaryTree.empty
@@ -236,9 +289,10 @@ def change_to_min_heap :BinaryTree Nat → BinaryTree Nat
     let updated := BinaryTree.node v l_fixed r_fixed
     min_bubble_down updated
 
--- Testing the functions with an example
+-- Testing the functions with examples
 open BinaryTree
 
+-- Original test trees
 def exampleTree : BinaryTree Nat :=
   node 100
     (node 2
@@ -256,6 +310,16 @@ def exampleTree3 : BinaryTree Nat :=
     empty (leaf 2)
 
 def exampleArray : Array Nat := #[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+
+-- New test tree for delete_top
+def testTree : BinaryTree Nat :=
+  node 10
+    (node 15
+      (leaf 30)
+      (leaf 40))
+    (node 20
+      (leaf 50)
+      (leaf 60))
 
 -- Original tests
 #eval array_to_min_heap exampleArray
@@ -280,3 +344,9 @@ def exampleArray : Array Nat := #[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
 #eval find_all_paths exampleTree 
 #eval diameter exampleTree 
 #eval sum_of_path_lengths exampleTree 
+
+-- Tests for delete_top
+#eval delete_top testTree       -- 删除堆顶后的结果
+#eval delete_top (leaf 5)       -- 单节点树删除
+#eval delete_top empty          -- 空树删除
+#eval delete_top exampleTree    -- 复杂树删除堆顶
